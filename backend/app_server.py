@@ -11,6 +11,10 @@ from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain_community.llms import Ollama
 import os, textwrap
+from motor.motor_asyncio import AsyncIOMotorClient
+from bson import ObjectId
+from typing import Optional
+
 
 # -------------------------------------------------------------------
 # CONFIGURATION
@@ -18,6 +22,16 @@ import os, textwrap
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://192.168.31.152:11434")
 LLM_MODEL = os.getenv("LLM_MODEL", "gemma3:1b")
 FAISS_INDEX_PATH = os.getenv("FAISS_INDEX_PATH", "faiss_hr_policy_index")
+# -------------------------------------------------------------------
+# MONGODB CONFIG
+# -------------------------------------------------------------------
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://192.168.31.152:27017")
+MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "hr_assistant")
+MONGO_COLLECTION = os.getenv("MONGO_COLLECTION", "users")
+
+mongo_client: Optional[AsyncIOMotorClient] = None
+users_collection = None
+
 
 # -------------------------------------------------------------------
 # INITIALIZE MODELS
@@ -31,6 +45,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_db_client():
+    global mongo_client, users_collection
+    mongo_client = AsyncIOMotorClient(MONGO_URI)
+    db = mongo_client[MONGO_DB_NAME]
+    users_collection = db[MONGO_COLLECTION]
+    print("✅ Connected to MongoDB")
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    if mongo_client:
+        mongo_client.close()
+        print("🛑 MongoDB connection closed")
 
 # Load embeddings and FAISS vector store
 embedding_model = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
@@ -113,6 +141,13 @@ class QueryResponse(BaseModel):
     mode: str
     answer: str
 
+class UserResponse(BaseModel):
+    id: str
+    name: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[str] = None
+
+
 # -------------------------------------------------------------------
 # ROUTES
 # -------------------------------------------------------------------
@@ -147,3 +182,26 @@ async def handle_query(req: QueryRequest):
 @app.get("/")
 def root():
     return {"status": "ok", "mode": "RAG + Direct LLM", "model": LLM_MODEL, "ollama": OLLAMA_BASE_URL}
+
+@app.get("/user/{user_id}", response_model=UserResponse)
+async def get_user(user_id: str):
+    """
+    Fetch a user by ID from MongoDB 'users' collection.
+    """
+    if users_collection is None:
+        return {"error": "Database not connected"}
+
+    try:
+        doc = await users_collection.find_one({"_id": ObjectId(user_id)})
+        if not doc:
+            return {"error": "User not found"}
+    except Exception as e:
+        return {"error": f"Invalid ID or DB error: {repr(e)}"}
+
+    return UserResponse(
+        id=str(doc["_id"]),
+        name=doc.get("name"),
+        email=doc.get("email"),
+        role=doc.get("role")
+    )
+
