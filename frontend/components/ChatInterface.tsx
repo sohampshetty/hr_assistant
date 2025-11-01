@@ -38,13 +38,10 @@ const ChatInterface: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post("http://localhost:11434/v1/chat/completions", {
-        model: "gemma3:1b",
-        messages: updatedMessages,
-        max_tokens: 200,
-      });
+      // Call your backend RAG LLM API
+      const response = await axios.post("http://localhost:8000/query", { query: userMessage.content });
 
-      const fullText: string = response.data.choices[0].message.content.trim();
+      const fullText: string = response.data.answer.trim();
 
       // Start with empty assistant message
       setMessages([...updatedMessages, { role: "assistant", content: "" }]);
@@ -53,7 +50,6 @@ const ChatInterface: React.FC = () => {
       typewriterEffect(fullText, (chunk) => {
         setMessages((prevMessages) => {
           const msgs = [...prevMessages];
-          // Update the last message content progressively
           msgs[msgs.length - 1] = { role: "assistant", content: chunk };
           return msgs;
         });
@@ -66,7 +62,8 @@ const ChatInterface: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+};
+
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);

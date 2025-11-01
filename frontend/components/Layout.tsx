@@ -8,12 +8,12 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className={styles.container}>
-      <aside className={styles.sidebar}>
+      {/* <aside className={styles.sidebar}>
         <h2 className={styles.sidebarTitle}>Chats</h2>
         <div className={styles.sidebarContent}>
           <p>No chats yet.</p>
         </div>
-      </aside>
+      </aside> */}
 
       <div className={styles.main}>
         <header className={styles.header}>HR Assistant</header>

@@ -41,3 +41,6 @@ yarn-error.log*
 next-env.d.ts
 frontend/.next/
 frontend/node_modules/
+backend/my_env/
+backend/.metaflow/
+backend/faiss_hr_policy_index/
