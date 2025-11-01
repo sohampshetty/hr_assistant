@@ -39,7 +39,7 @@ const ChatInterface: React.FC = () => {
 
     try {
       // Call your backend RAG LLM API
-      const response = await axios.post("http://localhost:8000/query", { query: userMessage.content });
+      const response = await axios.post("http://localhost:8000/query", { query: userMessage.content, user_id: "6905f948cf86e1434e63b113" });
 
       const fullText: string = response.data.answer.trim();
 
@@ -101,7 +101,7 @@ const ChatInterface: React.FC = () => {
 
         {loading && (
           <p aria-live="assertive" style={{ fontStyle: "italic", color: "#666" }}>
-            AI is typing...
+            thinking...
           </p>
         )}
         <div ref={bottomRef} />
